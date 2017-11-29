@@ -1,5 +1,7 @@
 include("LP_matrix.jl")
 
+#augment the lp by adding slack varible
+#and initialize the basic and nonbasic variable list
 function create_SDLP(A,b,c)
   dimension = size(A);
   dv_num    = dimension[2];
@@ -37,18 +39,21 @@ function find_enter(LP)
   end
 end
 
+#get the new constant vector
 function get_constant(LP)
   Ab = LP.A[:,LP.bv];
   return inv(Ab)*LP.b;
 end
 
+#get the column coefficients of entering variable in the
+#dictionary
 function get_dict_coef(LP,index)
   Aj      = LP.A[:,index];
   coef    = inv(LP.A[:,LP.bv])*Aj
   return coef
 end
 
-#problem here
+#find the exiting variable
 function find_exit(LP,index)
   b     = LP.b;
   aj    = get_dict_coef(LP,index);
@@ -59,6 +64,7 @@ function find_exit(LP,index)
   return [LP.bv[findfirst(bound, t_bound)],abs(t_bound)];
 end
 
+#get the next dictionary using standard rule
 function next_dic(LP)
   #get the information for the next step
   #1. find the enter variable by computing
@@ -111,6 +117,7 @@ function detect_cycle()
 
 end
 
+#use revise simplex method to solve the lp
 function simplex(LP)
     opt = 1;
     while opt > 0
@@ -120,16 +127,10 @@ function simplex(LP)
     return return_objective_val(LP);
 end
 
+#return the currect objective value
 function return_objective_val(LP)
   Ab = LP.A[:,LP.bv];
   cb = LP.c[LP.bv,:];
 
   return cb'*LP.b;
 end
-
-
-A = [1.0 4.0 0.0; 3 -1 1];
-b_e = [1 2];
-c = [4 1 2];
-SDL = create_SDLP(A,b_e',c');
-opt = simplex(SDl)
