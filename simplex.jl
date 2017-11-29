@@ -18,6 +18,9 @@ function create_SDLP(A,b,c)
   return LP_matrix(Aug,b,cug,0,bv,nbv,dv,sv)
 end
 
+#find the entering variable using standard rule
+#i.e the varialbe with largest positive coeffcients
+#return -1 if the dictionary is optimal
 function find_enter(LP)
   Ab = LP.A[:,LP.bv];
   An = LP.A[:,LP.nbv];
@@ -25,8 +28,13 @@ function find_enter(LP)
   cn = LP.c[LP.nbv,:];
 
   ceof    = cn' - cb'*inv(Ab)*An;
-  enter_v = findfirst(ceof, maximum(ceof));
-  return enter_v;
+  #if the dictionary is optimal return -1
+  if (any(x->x>0, ceof))
+    enter_v = findfirst(ceof, maximum(ceof));
+    return enter_v;
+  else
+    return -1;
+  end
 end
 
 function get_constant(LP)
@@ -40,13 +48,15 @@ function get_dict_coef(LP,index)
   return coef
 end
 
+#problem here
 function find_exit(LP,index)
   b     = LP.b;
   aj    = get_dict_coef(LP,index);
-  bound = b./aj
-  t_bound = minimum(bound);
+  bound = b./aj;
+  bound_filter  = filter(x -> x > 0, bound);
+  t_bound = minimum(bound_filter);
   #assume all ratio >=0 for now i.e not degeneracy
-  return [LP.bv[findfirst(bound, t_bound)],t_bound];
+  return [LP.bv[findfirst(bound, t_bound)],abs(t_bound)];
 end
 
 function next_dic(LP)
@@ -61,6 +71,11 @@ function next_dic(LP)
 
   #get the enter and exit variable
   enter_v = find_enter(LP);
+
+  if (enter_v == -1)
+    return -1;
+  end
+
   exit_v  = find_exit(LP,enter_v);
 
   #compute new b
@@ -78,6 +93,9 @@ function next_dic(LP)
   #update non basic variable
   enter_index         = findfirst(LP.nbv,enter_v);
   LP.nbv[enter_index] = exit_v[1];
+
+  return enter_v;
+
 end
 
 #we can just check the entering column at each step
@@ -93,13 +111,25 @@ function detect_cycle()
 
 end
 
-#this function will detect if the LP
-#enter optimal form
-function detect_optimality()
+function simplex(LP)
+    opt = 1;
+    while opt > 0
+      print("Calculating")
+      opt = next_dic(LP);
+    end
+    return return_objective_val(LP);
 end
+
+function return_objective_val(LP)
+  Ab = LP.A[:,LP.bv];
+  cb = LP.c[LP.bv,:];
+
+  return cb'*LP.b;
+end
+
 
 A = [1.0 4.0 0.0; 3 -1 1];
 b_e = [1 2];
 c = [4 1 2];
-SDl = create_SDLP(A,b_e',c');
-SDL_next = next_dic(SDl);
+SDL = create_SDLP(A,b_e',c');
+opt = simplex(SDl)
